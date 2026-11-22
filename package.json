@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "node scripts/build.mjs",
     "check": "node scripts/check-dist.mjs",
     "ci": "npm run build && npm run check"
   },
