@@ -1,0 +1,22 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build and check (preview rules)
+        run: npm run ci
+      - name: Build and check (production rules, main only)
+        if: github.ref == 'refs/heads/main'
+        run: PUBLIC_ENV=production npm run ci

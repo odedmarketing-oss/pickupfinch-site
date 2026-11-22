@@ -1,0 +1,26 @@
+---
+// Every page passes title (<=60 chars) and description (<=155 chars). CI checks both.
+const { title, description, noindex = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+// Preview builds (any non-production build) are noindexed; Cloudflare preview URLs are public.
+const isProd = import.meta.env.PUBLIC_ENV === 'production';
+const robots = noindex || !isProd ? 'noindex, nofollow' : 'index, follow';
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content={robots} />
+    <link rel="canonical" href={canonical} />
+  </head>
+  <body>
+    <header><a href="/">PickupFinch</a></header>
+    <main><slot /></main>
+    <footer>
+      <!-- Footer links (/about/, /how-we-review/, /affiliate-disclosure/, /contact/, /privacy/, /author/<name>/) are added when each page exists. Legal text is never drafted by agents. CI fails on broken internal links. -->
+    </footer>
+  </body>
+</html>
