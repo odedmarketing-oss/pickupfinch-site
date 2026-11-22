@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://pickupfinch.com/sitemap-index.xml

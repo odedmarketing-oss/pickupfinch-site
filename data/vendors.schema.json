@@ -1,0 +1,23 @@
+{
+  "$comment": "Dated price-and-terms database. One record per vendor plan. Every fact needs source_url, quote and checked_on. Feeds the /virtual-receptionist-cost/ calculator. Server-built into HTML; JavaScript may only filter or sort.",
+  "type": "object",
+  "required": ["vendor", "plan", "checked_on", "sources"],
+  "properties": {
+    "vendor": {"type": "string"},
+    "plan": {"type": "string"},
+    "price_usd_per_month": {"type": ["number", "null"]},
+    "minutes_included": {"type": ["number", "null"]},
+    "overage_usd_per_minute": {"type": ["number", "null"]},
+    "setup_fee_usd": {"type": ["number", "null"]},
+    "contract": {"type": ["string", "null"]},
+    "hipaa_baa": {"type": ["string", "null"]},
+    "bilingual": {"type": ["string", "null"]},
+    "checked_on": {"type": "string", "format": "date"},
+    "sources": {
+      "type": "array",
+      "items": {"type": "object", "required": ["field", "url", "quote", "date"],
+        "properties": {"field": {"type": "string"}, "url": {"type": "string"}, "quote": {"type": "string"}, "date": {"type": "string"}}}
+    },
+    "change_log": {"type": "array", "items": {"type": "object"}}
+  }
+}
