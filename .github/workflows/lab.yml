@@ -1,0 +1,30 @@
+# Lab checks. Deliberately NOT part of the required check "build-and-check": lab timings vary and
+# vendor sites go down, and neither should block a merge. Promote a job to required in the
+# protect-main ruleset only after pages #1, #3, #4 show stable results.
+name: Lab checks
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  speed:
+    name: Core Web Vitals lab test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # Pinned version. Mobile emulation, median of 3 runs per built page. Thresholds are in lighthouserc.json.
+      - name: Lighthouse CI
+        run: npx --yes @lhci/cli@0.16.1 autorun --config=./lighthouserc.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci/
+          if-no-files-found: ignore
