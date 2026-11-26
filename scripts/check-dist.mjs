@@ -1,32 +1,24 @@
 // Pre-publish gate. Reads ./dist and fails on rule breaks. Never edits anything.
 // Rules from Project Plan: Ahrefs 8 static-site problems, title/meta limits, disclosure, rel=sponsored,
 // no experience claims on research pages, tables in HTML, real 404 page.
-import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
-import { join, relative } from 'node:path';
+// Usage: node scripts/check-dist.mjs [--dist dist] [--hosts data/affiliate-hosts.json]
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { parseArgs, loadSite, loadAffiliateHosts, hostMatches } from './lib/site.mjs';
 
-const DIST = 'dist';
+const args = parseArgs(process.argv.slice(2), { dist: 'dist', hosts: 'data/affiliate-hosts.json' });
+const DIST = args.dist;
 const fails = [];
 const fail = (page, msg) => fails.push(`${page}: ${msg}`);
 
-function walk(dir) {
-  return readdirSync(dir).flatMap((f) => {
-    const p = join(dir, f);
-    return statSync(p).isDirectory() ? walk(p) : [p];
-  });
-}
-if (!existsSync(DIST)) { console.error('dist/ missing: run build first'); process.exit(1); }
-
-const files = walk(DIST);
-const htmlFiles = files.filter((f) => f.endsWith('.html'));
-const pages = new Map(); // url path -> html
-for (const f of htmlFiles) {
-  const rel = '/' + relative(DIST, f).replace(/index\.html$/, '').replace(/\\/g, '/');
-  pages.set(rel === '/404.html' ? '/404.html' : rel, readFileSync(f, 'utf8'));
-}
+let files, pages, AFFILIATE_HOSTS;
+try {
+  ({ files, pages } = loadSite(DIST));
+  AFFILIATE_HOSTS = loadAffiliateHosts(args.hosts);
+} catch (e) { console.error(`CHECK FAILED\n - ${e.message}`); process.exit(1); }
 
 const isProd = process.env.PUBLIC_ENV === 'production';
 const BANNED = /\b(we tested|we've tested|hands-on|in our testing|i used|i tested|we used)\b/i;
-const AFFILIATE_HOSTS = (process.env.AFFILIATE_HOSTS || '').split(',').filter(Boolean);
 
 for (const [path, html] of pages) {
   const is404 = path === '/404.html';
@@ -53,7 +45,7 @@ for (const [path, html] of pages) {
   // affiliate links: rel must include sponsored; disclosure must exist before the first one
   const links = [...html.matchAll(/<a\s[^>]*href="(https?:\/\/[^"]+)"[^>]*>/g)];
   const aff = links.filter((m) => {
-    try { return AFFILIATE_HOSTS.some((h) => new URL(m[1]).hostname.endsWith(h)); } catch { return false; }
+    try { return hostMatches(new URL(m[1]).hostname, AFFILIATE_HOSTS); } catch { return false; }
   });
   for (const m of aff) if (!/rel="[^"]*sponsored/.test(m[0])) fail(path, `affiliate link without rel="sponsored": ${m[1]}`);
   if (aff.length) {
@@ -75,4 +67,5 @@ if (!/Sitemap:/i.test(robotsTxt)) fail('site', 'robots.txt missing Sitemap line'
 if (/Disallow:\s*\/\s*$/m.test(robotsTxt)) fail('site', 'robots.txt blocks the whole site');
 
 if (fails.length) { console.error(`CHECK FAILED (${fails.length})\n` + fails.map((x) => ' - ' + x).join('\n')); process.exit(1); }
+if (!AFFILIATE_HOSTS.length) console.log('NOTE: affiliate host list is empty (no programs yet): rel=sponsored and disclosure rules have nothing to check.');
 console.log(`CHECK PASSED: ${pages.size} pages`);

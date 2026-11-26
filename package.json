@@ -6,7 +6,8 @@
     "dev": "astro dev",
     "build": "node scripts/build.mjs",
     "check": "node scripts/check-dist.mjs",
-    "ci": "npm run build && npm run check"
+    "ci": "npm run build && npm run check && npm test",
+    "test": "node tests/run.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.2.0",
