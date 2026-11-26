@@ -5,10 +5,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs, loadSite, loadAffiliateHosts, hostMatches } from './lib/site.mjs';
+import { checkSchema } from './lib/schema.mjs';
 
 const args = parseArgs(process.argv.slice(2), { dist: 'dist', hosts: 'data/affiliate-hosts.json' });
 const DIST = args.dist;
 const fails = [];
+const warns = [];
 const fail = (page, msg) => fails.push(`${page}: ${msg}`);
 
 let files, pages, AFFILIATE_HOSTS;
@@ -20,6 +22,7 @@ try {
 const isProd = process.env.PUBLIC_ENV === 'production';
 const BANNED = /\b(we tested|we've tested|hands-on|in our testing|i used|i tested|we used)\b/i;
 
+let schemaPages = 0;
 for (const [path, html] of pages) {
   const is404 = path === '/404.html';
   const title = (html.match(/<title>([^<]*)<\/title>/) || [])[1] || '';
@@ -53,6 +56,12 @@ for (const [path, html] of pages) {
     if (!/data-disclosure/.test(html.slice(0, firstAt))) fail(path, 'no data-disclosure element above the first affiliate link');
   }
 
+  // structured data (JSON-LD)
+  const sc = checkSchema(path, html, pages);
+  sc.fails.forEach((m) => fail(path, m));
+  sc.warns.forEach((m) => warns.push(`${path}: ${m}`));
+  schemaPages += sc.blocks ? 1 : 0;
+
   // internal links must resolve to a built page
   for (const m of html.matchAll(/<a\s[^>]*href="(\/[^"#?]*)"/g)) {
     const target = m[1];
@@ -66,6 +75,8 @@ const robotsTxt = existsSync(join(DIST, 'robots.txt')) ? readFileSync(join(DIST,
 if (!/Sitemap:/i.test(robotsTxt)) fail('site', 'robots.txt missing Sitemap line');
 if (/Disallow:\s*\/\s*$/m.test(robotsTxt)) fail('site', 'robots.txt blocks the whole site');
 
+if (warns.length) console.log(`WARNINGS (${warns.length})\n` + warns.map((x) => ' - ' + x).join('\n'));
+console.log(`schema: ${schemaPages} of ${pages.size} pages carry JSON-LD`);
 if (fails.length) { console.error(`CHECK FAILED (${fails.length})\n` + fails.map((x) => ' - ' + x).join('\n')); process.exit(1); }
 if (!AFFILIATE_HOSTS.length) console.log('NOTE: affiliate host list is empty (no programs yet): rel=sponsored and disclosure rules have nothing to check.');
 console.log(`CHECK PASSED: ${pages.size} pages`);
