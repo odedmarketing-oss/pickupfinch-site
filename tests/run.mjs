@@ -3,8 +3,9 @@
 import { html, makeSite, run, expectRun, summary } from './lib.mjs';
 import { dist } from './cases/dist.mjs';
 import { schema } from './cases/schema.mjs';
+import { duplicates } from './cases/duplicates.mjs';
 
-const cases = [dist, schema];
+const cases = [dist, schema, duplicates];
 const only = process.argv[2];
 for (const c of cases) {
   if (only && c.name !== only) continue;
