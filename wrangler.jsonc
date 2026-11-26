@@ -1,5 +1,9 @@
 {
   "name": "pickupfinch-site",
   "compatibility_date": "2026-11-01",
-  "assets": { "directory": "./dist", "not_found_handling": "404-page" }
+  "assets": { "directory": "./dist", "not_found_handling": "404-page" },
+  // Production is served only on the custom domain pickupfinch.com.
+  "workers_dev": false,
+  // Preview URLs stay on for PR previews; the build guard (scripts/build.mjs) makes them noindex.
+  "preview_urls": true
 }
