@@ -2,7 +2,7 @@
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, spawn } from 'node:child_process';
 
 export const ROOT = new URL('..', import.meta.url).pathname;
 
@@ -18,7 +18,7 @@ const BASE = {
   'sitemap-index.xml': '<sitemapindex/>',
 };
 
-export function makeSite(files, { base = true } = {}) {
+export function makeSite(files, { base = true, hosts: affHosts = ['partner.example'] } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pf-test-'));
   const dist = join(dir, 'dist');
   for (const [name, content] of Object.entries({ ...(base ? BASE : {}), ...files })) {
@@ -27,13 +27,23 @@ export function makeSite(files, { base = true } = {}) {
     writeFileSync(p, content);
   }
   const hosts = join(dir, 'affiliate-hosts.json');
-  writeFileSync(hosts, JSON.stringify({ hosts: ['partner.example'] }));
+  writeFileSync(hosts, JSON.stringify({ hosts: affHosts }));
   return { dir, dist, hosts };
 }
 
 export function run(script, args, env = {}) {
   const r = spawnSync('node', [join(ROOT, script), ...args], { encoding: 'utf8', cwd: ROOT, env: { ...process.env, PUBLIC_ENV: 'production', ...env } });
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
+}
+
+export function runAsync(script, args, env = {}) {
+  return new Promise((resolve) => {
+    const t0 = Date.now();
+    const p = spawn('node', [join(ROOT, script), ...args], { cwd: ROOT, env: { ...process.env, PUBLIC_ENV: 'production', ...env } });
+    let out = '';
+    p.stdout.on('data', (d) => (out += d)); p.stderr.on('data', (d) => (out += d));
+    p.on('close', (code) => resolve({ code, out, ms: Date.now() - t0 }));
+  });
 }
 
 let passed = 0, failed = 0;

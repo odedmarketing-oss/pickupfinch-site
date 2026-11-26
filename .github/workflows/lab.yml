@@ -5,11 +5,14 @@ name: Lab checks
 on:
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1'   # weekly, Monday 06:17 UTC
 permissions:
   contents: read
 jobs:
   speed:
     name: Core Web Vitals lab test
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,3 +31,37 @@ jobs:
           name: lighthouse-reports
           path: .lighthouseci/
           if-no-files-found: ignore
+
+  external-links:
+    name: External link check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write   # only used to open one issue when the weekly run fails
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # <= 1 request per second per host, identifiable user agent, robots.txt respected, Amazon never fetched.
+      # Writes the report to the run summary. Exit 1 on any FAIL.
+      - run: npm run check:links
+      # A scheduled run's email goes to whoever created the workflow, not to the repo owner, so a failure opens
+      # (or updates) one issue, which notifies the owner. Note: GitHub switches scheduled workflows off after 60 days
+      # without repository activity; the agents' page PRs keep the repo active.
+      - name: Open or update an issue when the weekly run fails
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/issues?state=open&labels=link-check&per_page=1" --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/issues/$existing/comments" -f body="Weekly external link check failed again: $run_url"
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues" -f title="External link check failed" -f 'labels[]=link-check' \
+              -f body="The weekly external link check found failing links. Report is in the run summary: $run_url. Fix windows: P1 within 7 days (48 hours in the last week before Black Friday or Prime Day), P2 at the next monthly pass."
+          fi
