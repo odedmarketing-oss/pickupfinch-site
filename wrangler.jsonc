@@ -5,5 +5,7 @@
   // Production is served only on the custom domain pickupfinch.com.
   "workers_dev": false,
   // Preview URLs stay on for PR previews; the build guard (scripts/build.mjs) makes them noindex.
-  "preview_urls": true
+  "preview_urls": true,
+  // Required by `wrangler preview`, which Workers Builds runs for non-production branches.
+  "previews": {}
 }
