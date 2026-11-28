@@ -1,0 +1,4 @@
+{
+  "_note": "Hostnames of affiliate/partner link targets (no scheme, no path). A link whose host equals or ends with an entry is an affiliate link: it needs rel=sponsored and a data-disclosure element above the first one. Empty until the first program is approved (Plan, Gate 1). Add a host in the same PR that adds its first link.",
+  "hosts": []
+}
